@@ -3,20 +3,20 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Datepicker, { DateValueType } from 'react-tailwindcss-datepicker'
-import { getTimeEntries, createTimeEntry, updateTimeEntry, deleteTimeEntry } from '@/services/timeEntries'
-import { getClients } from '@/services/clients'
-import { TimeEntry, Client, CreateTimeEntryInput, UpdateTimeEntryInput } from '@/types/database'
+import { TimeEntry, CreateTimeEntryInput } from '@/types/database'
 import { Notification } from '@/components/Notification'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTimeEntries } from '@/hooks/useTimeEntries'
+import { useClients } from '@/hooks/useClients'
+import { Button } from '@/components/ui/Button'
+import { Card, CardHeader, CardContent } from '@/components/ui/Card'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
 
 export default function Home() {
   const { user } = useAuth()
-  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
-  const [clients, setClients] = useState<Client[]>([])
-  const [loading, setLoading] = useState(true)
+  const { timeEntries, loading, page, totalPages, loadTimeEntries, createEntry, updateEntry, deleteEntry, goToPage } = useTimeEntries()
+  const { clients, loadClients } = useClients()
   const [formLoading, setFormLoading] = useState(false)
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null)
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null)
   
@@ -37,33 +37,7 @@ export default function Home() {
   useEffect(() => {
     loadClients()
     loadTimeEntries()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    loadTimeEntries()
-  }, [page]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function loadTimeEntries() {
-    try {
-      setLoading(true)
-      const result = await getTimeEntries(page, 10)
-      setTimeEntries(result.data)
-      setTotalPages(result.totalPages)
-    } catch {
-      setNotification({ type: 'error', message: 'Failed to load time entries' })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function loadClients() {
-    try {
-      const data = await getClients()
-      setClients(data)
-    } catch {
-      setNotification({ type: 'error', message: 'Failed to load clients' })
-    }
-  }
+  }, [loadClients, loadTimeEntries])
 
   async function handleSubmit(e?: React.FormEvent) {
     if (e) e.preventDefault()
@@ -77,37 +51,45 @@ export default function Home() {
     setFormLoading(true)
 
     try {
+      let result
       if (editingEntry) {
-        const updateData: UpdateTimeEntryInput = {
+        const updateData = {
           client_id: formData.client_id,
           date: formData.date,
           hours: formData.hours,
           description: formData.description
         }
-        await updateTimeEntry(editingEntry.id, updateData)
-        setNotification({ type: 'success', message: 'Time entry updated successfully' })
-        setEditingEntry(null)
+        result = await updateEntry(editingEntry.id, updateData)
+        if (result.success) {
+          setNotification({ type: 'success', message: 'Time entry updated successfully' })
+          setEditingEntry(null)
+        } else {
+          setNotification({ type: 'error', message: result.error || 'Failed to update time entry' })
+        }
       } else {
-        await createTimeEntry(formData, user.id)
-        setNotification({ type: 'success', message: 'Time entry created successfully' })
+        result = await createEntry(formData, user.id)
+        if (result.success) {
+          setNotification({ type: 'success', message: 'Time entry created successfully' })
+        } else {
+          setNotification({ type: 'error', message: result.error || 'Failed to create time entry' })
+        }
       }
       
-      // Reset form
-      const today = new Date()
-      const todayStr = today.toISOString().split('T')[0]
-      setFormData({
-        client_id: '',
-        date: todayStr,
-        hours: 0,
-        description: ''
-      })
-      setDateValue({
-        startDate: today,
-        endDate: today
-      })
-      
-      // Reload entries
-      loadTimeEntries()
+      if (result.success) {
+        // Reset form
+        const today = new Date()
+        const todayStr = today.toISOString().split('T')[0]
+        setFormData({
+          client_id: '',
+          date: todayStr,
+          hours: 0,
+          description: ''
+        })
+        setDateValue({
+          startDate: today,
+          endDate: today
+        })
+      }
     } catch {
       setNotification({ type: 'error', message: 'Failed to save time entry' })
     } finally {
@@ -118,12 +100,11 @@ export default function Home() {
   async function handleDelete(id: string) {
     if (!confirm('Are you sure you want to delete this entry?')) return
 
-    try {
-      await deleteTimeEntry(id)
+    const result = await deleteEntry(id)
+    if (result.success) {
       setNotification({ type: 'success', message: 'Time entry deleted successfully' })
-      loadTimeEntries()
-    } catch {
-      setNotification({ type: 'error', message: 'Failed to delete time entry' })
+    } else {
+      setNotification({ type: 'error', message: result.error || 'Failed to delete time entry' })
     }
   }
 
@@ -176,11 +157,10 @@ export default function Home() {
           {clients.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500 mb-4">You need to add a client before tracking time.</p>
-              <Link
-                href="/clients"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-              >
-                Add Your First Client
+              <Link href="/clients">
+                <Button variant="primary">
+                  Add Your First Client
+                </Button>
               </Link>
             </div>
           ) : (
@@ -266,124 +246,116 @@ export default function Home() {
           
           {editingEntry && (
             <div className="mt-4 flex gap-2">
-              <button
+              <Button
                 type="button"
                 onClick={cancelEdit}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                variant="secondary"
               >
                 Cancel Edit
-              </button>
+              </Button>
             </div>
           )}
         </div>
 
         {/* Time Entries List */}
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <Card>
+          <CardHeader>
             <h2 className="text-lg font-semibold">Time Entries</h2>
-          </div>
+          </CardHeader>
 
           {loading ? (
-            <div className="p-8 text-center">
+            <CardContent className="text-center">
               <p className="text-gray-500">Loading time entries...</p>
-            </div>
+            </CardContent>
           ) : timeEntries.length === 0 ? (
-            <div className="p-8 text-center">
+            <CardContent className="text-center">
               <p className="text-gray-500">No time entries yet. Add your first entry above!</p>
-            </div>
+            </CardContent>
           ) : (
             <>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Client
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Description
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Hours
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Amount
-                      </th>
-                      <th className="relative px-6 py-3">
-                        <span className="sr-only">Actions</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {timeEntries.map((entry) => (
-                      <tr key={entry.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(entry.date).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {entry.client?.name || 'Unknown Client'}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {entry.description}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {entry.hours}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {entry.client && (
-                            <>
-                              {entry.client.currency} {(entry.hours * entry.client.hourly_rate).toFixed(2)}
-                            </>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => handleEdit(entry)}
-                            className="text-blue-600 hover:text-blue-900 mr-4"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(entry.id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Hours</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {timeEntries.map((entry) => (
+                    <TableRow key={entry.id}>
+                      <TableCell>
+                        {new Date(entry.date).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        {entry.client?.name || 'Unknown Client'}
+                      </TableCell>
+                      <TableCell>
+                        {entry.description}
+                      </TableCell>
+                      <TableCell>
+                        {entry.hours}
+                      </TableCell>
+                      <TableCell>
+                        {entry.client && (
+                          <>
+                            {entry.client.currency} {(entry.hours * entry.client.hourly_rate).toFixed(2)}
+                          </>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          onClick={() => handleEdit(entry)}
+                          variant="ghost"
+                          size="sm"
+                          className="mr-2"
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          onClick={() => handleDelete(entry.id)}
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          Delete
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
 
               {/* Pagination */}
               {totalPages > 1 && (
                 <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                  <button
-                    onClick={() => setPage(page - 1)}
+                  <Button
+                    onClick={() => goToPage(page - 1)}
                     disabled={page === 1}
-                    className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                    variant="secondary"
+                    size="sm"
                   >
                     Previous
-                  </button>
+                  </Button>
                   <span className="text-sm text-gray-700">
                     Page {page} of {totalPages}
                   </span>
-                  <button
-                    onClick={() => setPage(page + 1)}
+                  <Button
+                    onClick={() => goToPage(page + 1)}
                     disabled={page === totalPages}
-                    className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                    variant="secondary"
+                    size="sm"
                   >
                     Next
-                  </button>
+                  </Button>
                 </div>
               )}
             </>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   )
