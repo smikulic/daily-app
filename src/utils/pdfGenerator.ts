@@ -2,6 +2,13 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { ReportSummary, ReportFilters } from '@/hooks/useReports'
 
+// Extend jsPDF type to include autoTable properties
+interface jsPDFWithAutoTable extends jsPDF {
+  lastAutoTable?: {
+    finalY: number
+  }
+}
+
 interface TimeEntryForPDF {
   date: string
   clientName: string
@@ -16,12 +23,12 @@ export function generateReportPDF(
   filters: ReportFilters & { clientIds: string[] },
   timeEntries: TimeEntryForPDF[]
 ) {
-  const doc = new jsPDF()
+  const doc = new jsPDF() as jsPDFWithAutoTable
   
   // Colors
-  const primaryColor = [139, 92, 246] as const // violet-500
-  const grayColor = [107, 114, 128] as const // gray-500
-  const lightGrayColor = [243, 244, 246] as const // gray-100
+  const primaryColor: [number, number, number] = [139, 92, 246] // violet-500
+  const grayColor: [number, number, number] = [107, 114, 128] // gray-500
+  const lightGrayColor: [number, number, number] = [243, 244, 246] // gray-100
   
   // Header
   doc.setFontSize(24)
@@ -78,7 +85,7 @@ export function generateReportPDF(
   
   // Client Breakdown (if multiple clients)
   if (reportData.clientReports.length > 1) {
-    const finalY = (doc as any).lastAutoTable.finalY || 100
+    const finalY = doc.lastAutoTable?.finalY || 100
     
     doc.setFontSize(16)
     doc.text('Client Breakdown', 20, finalY + 20)
@@ -117,7 +124,7 @@ export function generateReportPDF(
     const activeMonths = reportData.monthlyReports.filter(month => month.totalHours > 0)
     
     if (activeMonths.length > 0) {
-      const finalY = (doc as any).lastAutoTable.finalY || 140
+      const finalY = doc.lastAutoTable?.finalY || 140
       
       doc.setFontSize(16)
       doc.text('Monthly Breakdown', 20, finalY + 20)
