@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getAllClientRecords, createClientRecord, updateClient, deleteClient } from '@/services/clients'
 import { Client, CreateClientInput, UpdateClientInput } from '@/types/database'
@@ -9,8 +8,7 @@ import { Notification } from '@/components/Notification'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function ClientsPage() {
-  const router = useRouter()
-  const { user, loading: authLoading } = useAuth()
+  const { user } = useAuth()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [formLoading, setFormLoading] = useState(false)
@@ -28,14 +26,8 @@ export default function ClientsPage() {
   })
 
   useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        router.push('/login')
-      } else {
-        loadClients()
-      }
-    }
-  }, [user, authLoading, router])
+    loadClients()
+  }, [])
 
   async function loadClients() {
     try {
@@ -59,8 +51,8 @@ export default function ClientsPage() {
           name: formData.name,
           hourly_rate: formData.hourly_rate,
           currency: formData.currency,
-          email: formData.email || null,
-          address: formData.address || null
+          ...(formData.email && { email: formData.email }),
+          ...(formData.address && { address: formData.address })
         }
         await updateClient(editingClient.id, updateData)
         setNotification({ type: 'success', message: 'Client updated successfully' })
@@ -125,16 +117,6 @@ export default function ClientsPage() {
     })
     setShowForm(false)
   }
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Loading...</p>
-      </div>
-    )
-  }
-
-  if (!user) return null
 
   return (
     <div className="min-h-screen bg-gray-50">

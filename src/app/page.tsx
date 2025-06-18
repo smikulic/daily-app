@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getTimeEntries, createTimeEntry, updateTimeEntry, deleteTimeEntry } from '@/services/timeEntries'
 import { getClients } from '@/services/clients'
@@ -10,8 +9,7 @@ import { Notification } from '@/components/Notification'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function Home() {
-  const router = useRouter()
-  const { user, loading: authLoading, signOut } = useAuth()
+  const { user, signOut } = useAuth()
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
@@ -30,20 +28,12 @@ export default function Home() {
   })
 
   useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        router.push('/login')
-      } else {
-        loadClients()
-        loadTimeEntries()
-      }
-    }
-  }, [user, authLoading, router]) // eslint-disable-line react-hooks/exhaustive-deps
+    loadClients()
+    loadTimeEntries()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (user) {
-      loadTimeEntries()
-    }
+    loadTimeEntries()
   }, [page]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadTimeEntries() {
@@ -137,16 +127,6 @@ export default function Home() {
       description: ''
     })
   }
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Loading...</p>
-      </div>
-    )
-  }
-
-  if (!user) return null
 
   return (
     <div className="min-h-screen bg-gray-50">
