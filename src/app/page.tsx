@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import Datepicker, { DateValueType } from 'react-tailwindcss-datepicker'
+import DatePicker from 'react-datepicker'
 import { TimeEntry, CreateTimeEntryInput } from '@/types/database'
 import { Notification } from '@/components/Notification'
 import { useAuth } from '@/contexts/AuthContext'
@@ -29,10 +29,7 @@ export default function Home() {
   })
   
   // Datepicker state
-  const [dateValue, setDateValue] = useState<DateValueType>({
-    startDate: new Date(),
-    endDate: new Date()
-  })
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
 
   useEffect(() => {
     loadClients()
@@ -85,10 +82,7 @@ export default function Home() {
           hours: 0,
           description: ''
         })
-        setDateValue({
-          startDate: today,
-          endDate: today
-        })
+        setSelectedDate(today)
       }
     } catch {
       setNotification({ type: 'error', message: 'Failed to save time entry' })
@@ -118,10 +112,7 @@ export default function Home() {
     })
     // Convert string date to Date object for datepicker
     const dateObj = new Date(entry.date)
-    setDateValue({
-      startDate: dateObj,
-      endDate: dateObj
-    })
+    setSelectedDate(dateObj)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -135,10 +126,7 @@ export default function Home() {
       hours: 0,
       description: ''
     })
-    setDateValue({
-      startDate: today,
-      endDate: today
-    })
+    setSelectedDate(today)
   }
 
   return (
@@ -193,28 +181,19 @@ export default function Home() {
                   </select>
                 </div>
                 <div className="h-full flex items-center px-2 relative">
-                  <Datepicker
-                    asSingle
-                    useRange={false}
-                    value={dateValue}
-                    onChange={(value: DateValueType) => {
-                      if (value) {
-                        setDateValue(value)
-                        if (value.startDate) {
-                          // Convert Date to string format YYYY-MM-DD
-                          const dateObj = new Date(value.startDate)
-                          const dateStr = dateObj.toISOString().split('T')[0]
-                          setFormData({ ...formData, date: dateStr })
-                        }
+                  <DatePicker
+                    selected={selectedDate}
+                    onChange={(date: Date | null) => {
+                      if (date) {
+                        setSelectedDate(date)
+                        const dateStr = date.toISOString().split('T')[0]
+                        setFormData({ ...formData, date: dateStr })
                       }
                     }}
-                    placeholder="Date"
-                    displayFormat="DD MMM YY"
-                    inputClassName="w-28 text-sm focus:outline-none cursor-pointer"
-                    toggleClassName="hidden"
-                    containerClassName="relative"
-                    popoverDirection="down"
-                    readOnly={true}
+                    dateFormat="dd MMM yy"
+                    className="w-28 text-sm focus:outline-none cursor-pointer bg-transparent border-0 p-0 text-center"
+                    placeholderText="Date"
+                    popperClassName="react-datepicker-popper"
                   />
                 </div>
                 <div className="h-full flex items-center px-2">
