@@ -34,17 +34,24 @@ export default function ReportsPage() {
     }
   }, [error])
 
-  const handleGenerateReport = async () => {
-    const result = await generateReport({
-      ...filters,
-      clientIds: selectedClients
-    })
-    
-    if (result) {
-      setReportData(result)
-      setNotification({ type: 'success', message: 'Report generated successfully' })
+  // Auto-generate report when filters change
+  useEffect(() => {
+    const generateReportAutomatically = async () => {
+      const result = await generateReport({
+        ...filters,
+        clientIds: selectedClients
+      })
+      
+      if (result) {
+        setReportData(result)
+      }
     }
-  }
+
+    // Only generate if clients are loaded
+    if (clients.length > 0 || selectedClients.length === 0) {
+      generateReportAutomatically()
+    }
+  }, [filters, selectedClients, generateReport, clients.length])
 
   const formatCurrency = (amount: number, currency = 'USD') => {
     return new Intl.NumberFormat('en-US', {
@@ -186,20 +193,23 @@ export default function ReportsPage() {
               </div>
             )}
 
-            <div className="mt-6">
-              <Button
-                onClick={handleGenerateReport}
-                loading={loading}
-                variant="primary"
-              >
-                Generate Report
-              </Button>
-            </div>
           </CardContent>
         </Card>
 
+        {/* Loading Indicator */}
+        {loading && (
+          <Card className="mb-8">
+            <CardContent className="text-center py-8">
+              <div className="inline-flex items-center">
+                <div className="w-4 h-4 border-2 border-violet-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                <span className="text-gray-600">Generating report...</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Report Summary */}
-        {reportData && (
+        {reportData && !loading && (
           <>
             <Card className="mb-8">
               <CardHeader>
