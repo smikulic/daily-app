@@ -142,9 +142,50 @@ export function useReports() {
     }
   }, [])
 
+  const getDetailedEntries = useCallback(async (filters: ReportFilters): Promise<TimeEntry[]> => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Get all time entries for the specified period
+      let allEntries: TimeEntry[] = []
+      let page = 1
+      let hasMore = true
+      
+      while (hasMore) {
+        const result = await getTimeEntries(page, 100)
+        allEntries = [...allEntries, ...result.data]
+        hasMore = page < result.totalPages
+        page++
+      }
+
+      // Filter entries by date range and clients
+      const startDate = new Date(filters.year, 0, 1)
+      const endDate = new Date(filters.year + 1, 0, 1)
+      
+      const filteredEntries = allEntries.filter(entry => {
+        const entryDate = new Date(entry.date)
+        const inDateRange = entryDate >= startDate && entryDate < endDate
+        const inClientFilter = filters.clientIds.length === 0 || filters.clientIds.includes(entry.client_id)
+        const inMonthFilter = !filters.month || entryDate.getMonth() + 1 === filters.month
+        
+        return inDateRange && inClientFilter && inMonthFilter
+      })
+
+      return filteredEntries
+    } catch (err) {
+      setError('Failed to fetch detailed entries')
+      console.error('Error fetching detailed entries:', err)
+      return []
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   return {
     loading,
     error,
-    generateReport
+    generateReport,
+    getDetailedEntries
   }
 }

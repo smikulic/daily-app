@@ -9,9 +9,10 @@ import { Select } from '@/components/ui/Select'
 import { Label } from '@/components/ui/Label'
 import { Card, CardHeader, CardContent } from '@/components/ui/Card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
+import { generateReportPDF } from '@/utils/pdfGenerator'
 
 export default function ReportsPage() {
-  const { generateReport, loading, error } = useReports()
+  const { generateReport, getDetailedEntries, loading, error } = useReports()
   const { clients, loadClients } = useClients()
   const [reportData, setReportData] = useState<ReportSummary | null>(null)
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null)
@@ -92,6 +93,43 @@ export default function ReportsPage() {
 
   const clearAllClients = () => {
     setSelectedClients([])
+  }
+
+  const handleDownloadPDF = async () => {
+    if (!reportData) {
+      setNotification({ type: 'error', message: 'No report data available to download' })
+      return
+    }
+
+    try {
+      // Get detailed time entries for the PDF
+      const detailedEntries = await getDetailedEntries({
+        ...filters,
+        clientIds: selectedClients
+      })
+
+      // Transform entries for PDF
+      const entriesForPDF = detailedEntries.map(entry => ({
+        date: entry.date,
+        clientName: entry.client?.name || 'Unknown Client',
+        description: entry.description,
+        hours: entry.hours,
+        amount: entry.client ? entry.hours * entry.client.hourly_rate : 0,
+        currency: entry.client?.currency || 'USD'
+      }))
+
+      // Generate PDF
+      generateReportPDF(
+        reportData,
+        { ...filters, clientIds: selectedClients },
+        entriesForPDF
+      )
+
+      setNotification({ type: 'success', message: 'PDF downloaded successfully!' })
+    } catch (err) {
+      console.error('Error generating PDF:', err)
+      setNotification({ type: 'error', message: 'Failed to generate PDF' })
+    }
   }
 
   return (
@@ -212,11 +250,31 @@ export default function ReportsPage() {
         {reportData && !loading && (
           <>
             <Card className="mb-8">
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <h2 className="text-lg font-semibold">
                   Summary for {filters.year}
                   {filters.month && ` - ${months.find(m => m.value === filters.month)?.label}`}
                 </h2>
+                <Button
+                  onClick={handleDownloadPDF}
+                  variant="primary"
+                  className="flex items-center gap-2"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  Download PDF
+                </Button>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
