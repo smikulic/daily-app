@@ -15,7 +15,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 export default function Home() {
   const { user } = useAuth()
   const { timeEntries, loading, page, totalPages, loadTimeEntries, createEntry, updateEntry, deleteEntry, goToPage } = useTimeEntries()
-  const { clients, loadClients } = useClients()
+  const { clients, loading: clientsLoading, loadClients } = useClients()
   const [formLoading, setFormLoading] = useState(false)
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null)
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null)
@@ -142,28 +142,23 @@ export default function Home() {
       <div className="max-w-6xl mx-auto">
         {/* Time Entry Form */}
         <div className="mb-8">
-          {clients.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500 mb-4">You need to add a client before tracking time.</p>
-              <Link href="/clients">
-                <Button variant="primary">
-                  Add Your First Client
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="relative my-8 h-16 w-12/12 border border-violet-300 rounded-xl">
-              <input
-                type="text"
-                name="description"
-                id="description"
-                placeholder="What are you working on?"
-                className="block w-full h-full pl-4 pr-20 rounded-2xl text-l text-gray-700 placeholder:text-gray-400 focus:outline-none"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              />
-              <div className="absolute inset-y-0 right-0 flex items-center">
-                <div className="h-full flex items-center px-2 border-l border-violet-300">
+          <div className="relative my-8 h-16 w-12/12 border border-violet-300 rounded-xl">
+            <input
+              type="text"
+              name="description"
+              id="description"
+              placeholder="What are you working on?"
+              className="block w-full h-full pl-4 pr-20 rounded-2xl text-l text-gray-700 placeholder:text-gray-400 focus:outline-none"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center">
+              <div className="h-full flex items-center px-2 border-l border-violet-300">
+                {clientsLoading ? (
+                  <div className="h-full w-28 flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-violet-600"></div>
+                  </div>
+                ) : (
                   <select
                     id="client"
                     name="client"
@@ -171,6 +166,7 @@ export default function Home() {
                     value={formData.client_id}
                     onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
                     required
+                    disabled={clients.length === 0}
                   >
                     <option value="">Client</option>
                     {clients.map((client) => (
@@ -179,7 +175,8 @@ export default function Home() {
                       </option>
                     ))}
                   </select>
-                </div>
+                )}
+              </div>
                 <div className="h-full flex items-center px-2 relative">
                   <DatePicker
                     selected={selectedDate}
@@ -218,8 +215,18 @@ export default function Home() {
                   >
                     {formLoading ? 'Saving...' : editingEntry ? 'Update' : 'Save'}
                   </div>
-                </div>
               </div>
+            </div>
+          </div>
+          
+          {!clientsLoading && clients.length === 0 && (
+            <div className="text-center py-4">
+              <p className="text-gray-500 mb-4">You need to add a client before tracking time.</p>
+              <Link href="/clients">
+                <Button variant="primary">
+                  Add Your First Client
+                </Button>
+              </Link>
             </div>
           )}
           
