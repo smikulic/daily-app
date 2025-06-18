@@ -172,12 +172,16 @@ async function createDemoClients(userId: string) {
   
   if (error) throw error
   
-  console.log(`Created ${data.length} demo clients`)
-  return data
+  console.log(`Created ${data?.length || 0} demo clients`)
+  return data || []
 }
 
 async function createDemoTimeEntries(userId: string, clients: any[]) {
   console.log('Creating demo time entries...')
+  
+  if (!clients || clients.length === 0) {
+    throw new Error('No clients available to create time entries')
+  }
   
   const dates = generateDateRange()
   const timeEntries = []
@@ -208,8 +212,8 @@ async function createDemoTimeEntries(userId: string, clients: any[]) {
   
   if (error) throw error
   
-  console.log(`Created ${data.length} demo time entries`)
-  return data
+  console.log(`Created ${data?.length || 0} demo time entries`)
+  return data || []
 }
 
 async function main() {
@@ -229,7 +233,7 @@ async function main() {
       .select('*')
       .eq('user_id', userId)
     
-    let clients = existingClients
+    let clients = existingClients || []
     
     if (!existingClients || existingClients.length === 0) {
       // Create demo clients
