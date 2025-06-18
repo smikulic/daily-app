@@ -1,120 +1,159 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { Client, CreateClientInput, UpdateClientInput } from '@/types/database'
-import { Notification } from '@/components/Notification'
-import { useAuth } from '@/contexts/AuthContext'
-import { useClients } from '@/hooks/useClients'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { Select } from '@/components/ui/Select'
-import { Label } from '@/components/ui/Label'
-import { Card, CardHeader, CardContent } from '@/components/ui/Card'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
+import { useState, useEffect } from "react";
+import { Client, CreateClientInput, UpdateClientInput } from "@/types/database";
+import { Notification } from "@/components/Notification";
+import { useAuth } from "@/contexts/AuthContext";
+import { useClients } from "@/hooks/useClients";
+import { Button } from "@/components/ui/Button";
+import { Card, CardHeader, CardContent } from "@/components/ui/Card";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/Table";
 
 export default function ClientsPage() {
-  const { user } = useAuth()
-  const { clients, loading, loadClients, createClient, updateClient, deleteClient } = useClients()
-  const [formLoading, setFormLoading] = useState(false)
-  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null)
-  const [editingClient, setEditingClient] = useState<Client | null>(null)
-  const [showForm, setShowForm] = useState(false)
-  
+  const { user } = useAuth();
+  const {
+    clients,
+    loading,
+    loadClients,
+    createClient,
+    updateClient,
+    deleteClient,
+  } = useClients();
+  const [formLoading, setFormLoading] = useState(false);
+  const [notification, setNotification] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+
   // Form state
   const [formData, setFormData] = useState<CreateClientInput>({
-    name: '',
+    name: "",
     hourly_rate: 0,
-    currency: 'USD',
-    email: '',
-    address: ''
-  })
+    currency: "USD",
+    email: "",
+    address: "",
+  });
 
   useEffect(() => {
-    loadClients()
-  }, [loadClients])
+    loadClients();
+  }, [loadClients]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setFormLoading(true)
+  async function handleSubmit(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+
+    // Validate required fields
+    if (!formData.name || !formData.hourly_rate) {
+      setNotification({
+        type: "error",
+        message: "Please fill in client name and hourly rate",
+      });
+      return;
+    }
+
+    setFormLoading(true);
 
     try {
-      let result
+      let result;
       if (editingClient) {
         const updateData: UpdateClientInput = {
           name: formData.name,
           hourly_rate: formData.hourly_rate,
           currency: formData.currency,
           ...(formData.email && { email: formData.email }),
-          ...(formData.address && { address: formData.address })
-        }
-        result = await updateClient(editingClient.id, updateData)
+          ...(formData.address && { address: formData.address }),
+        };
+        result = await updateClient(editingClient.id, updateData);
         if (result.success) {
-          setNotification({ type: 'success', message: 'Client updated successfully' })
-          setEditingClient(null)
+          setNotification({
+            type: "success",
+            message: "Client updated successfully",
+          });
+          setEditingClient(null);
         } else {
-          setNotification({ type: 'error', message: result.error || 'Failed to update client' })
+          setNotification({
+            type: "error",
+            message: result.error || "Failed to update client",
+          });
         }
       } else {
-        result = await createClient(formData, user.id)
+        result = await createClient(formData, user.id);
         if (result.success) {
-          setNotification({ type: 'success', message: 'Client created successfully' })
+          setNotification({
+            type: "success",
+            message: "Client created successfully",
+          });
         } else {
-          setNotification({ type: 'error', message: result.error || 'Failed to create client' })
+          setNotification({
+            type: "error",
+            message: result.error || "Failed to create client",
+          });
         }
       }
-      
+
       if (result.success) {
         // Reset form
         setFormData({
-          name: '',
+          name: "",
           hourly_rate: 0,
-          currency: 'USD',
-          email: '',
-          address: ''
-        })
-        setShowForm(false)
+          currency: "USD",
+          email: "",
+          address: "",
+        });
       }
     } catch {
-      setNotification({ type: 'error', message: 'Failed to save client' })
+      setNotification({ type: "error", message: "Failed to save client" });
     } finally {
-      setFormLoading(false)
+      setFormLoading(false);
     }
   }
 
   async function handleDelete(id: string, name: string) {
-    if (!confirm(`Are you sure you want to deactivate "${name}"?`)) return
+    if (!confirm(`Are you sure you want to deactivate "${name}"?`)) return;
 
-    const result = await deleteClient(id)
+    const result = await deleteClient(id);
     if (result.success) {
-      setNotification({ type: 'success', message: 'Client deactivated successfully' })
+      setNotification({
+        type: "success",
+        message: "Client deactivated successfully",
+      });
     } else {
-      setNotification({ type: 'error', message: result.error || 'Failed to delete client' })
+      setNotification({
+        type: "error",
+        message: result.error || "Failed to delete client",
+      });
     }
   }
 
   function handleEdit(client: Client) {
-    setEditingClient(client)
+    setEditingClient(client);
     setFormData({
       name: client.name,
       hourly_rate: client.hourly_rate,
       currency: client.currency,
-      email: client.email || '',
-      address: client.address || ''
-    })
-    setShowForm(true)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+      email: client.email || "",
+      address: client.address || "",
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function cancelEdit() {
-    setEditingClient(null)
+    setEditingClient(null);
     setFormData({
-      name: '',
+      name: "",
       hourly_rate: 0,
-      currency: 'USD',
-      email: '',
-      address: ''
-    })
-    setShowForm(false)
+      currency: "USD",
+      email: "",
+      address: "",
+    });
+    // setShowForm(false)
   }
 
   return (
@@ -128,116 +167,113 @@ export default function ClientsPage() {
       )}
 
       <div className="max-w-6xl mx-auto">
-        <header className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Clients</h1>
-            <p className="mt-2 text-gray-600">Manage your clients and their hourly rates</p>
-          </div>
-          <Button
-            onClick={() => setShowForm(!showForm)}
-            variant="primary"
-          >
-            {showForm ? 'Cancel' : 'Add Client'}
-          </Button>
-        </header>
-
         {/* Client Form */}
-        {showForm && (
-          <Card className="mb-8">
-            <CardHeader>
-              <h2 className="text-lg font-semibold">
-                {editingClient ? 'Edit Client' : 'Add New Client'}
-              </h2>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <Label htmlFor="name" required>Client Name</Label>
-                    <Input
-                      type="text"
-                      id="name"
-                      required
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="mt-1"
-                    />
-                  </div>
+        <div className="mb-8">
+          <div className="relative my-8 h-16 w-full border border-violet-300 rounded-xl">
+            <input
+              type="text"
+              name="name"
+              id="name"
+              placeholder="Client name"
+              className="block w-full h-full pl-4 pr-20 rounded-2xl text-l text-gray-700 placeholder:text-gray-400 focus:outline-none"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              required
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center">
+              <div className="h-full flex items-center px-2 border-l border-violet-300">
+                <input
+                  type="email"
+                  name="email"
+                  id="email"
+                  placeholder="Email"
+                  className="h-full w-32 bg-transparent text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                />
+              </div>
+              <div className="h-full flex items-center px-2 border-l border-violet-300">
+                <input
+                  type="number"
+                  name="hourly_rate"
+                  id="hourly_rate"
+                  placeholder="Rate"
+                  min="0"
+                  step="1"
+                  className="h-full w-16 bg-transparent text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none text-center"
+                  value={formData.hourly_rate || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      hourly_rate: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  required
+                />
+              </div>
+              <div className="h-full flex items-center px-2 border-l border-violet-300">
+                <select
+                  id="currency"
+                  name="currency"
+                  className="h-full w-16 bg-transparent text-sm text-gray-700 focus:outline-none"
+                  value={formData.currency}
+                  onChange={(e) =>
+                    setFormData({ ...formData, currency: e.target.value })
+                  }
+                  required
+                >
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="CAD">CAD</option>
+                  <option value="AUD">AUD</option>
+                </select>
+              </div>
 
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      type="email"
-                      id="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="hourly_rate" required>Hourly Rate</Label>
-                    <Input
-                      type="number"
-                      id="hourly_rate"
-                      required
-                      min="0"
-                      step="1"
-                      value={formData.hourly_rate || ''}
-                      onChange={(e) => setFormData({ ...formData, hourly_rate: parseInt(e.target.value) || 0 })}
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="currency" required>Currency</Label>
-                    <Select
-                      id="currency"
-                      required
-                      value={formData.currency}
-                      onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                      className="mt-1"
-                    >
-                      <option value="USD">USD ($)</option>
-                      <option value="EUR">EUR (€)</option>
-                      <option value="GBP">GBP (£)</option>
-                      <option value="CAD">CAD (C$)</option>
-                      <option value="AUD">AUD (A$)</option>
-                    </Select>
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <Label htmlFor="address">Address</Label>
-                    <textarea
-                      id="address"
-                      rows={3}
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors"
-                    />
-                  </div>
+              <div className="px-5 flex items-center h-full bg-violet-600 rounded-r-[0.7rem]">
+                <div
+                  className="text-sm text-violet-100 bg-violet-600 cursor-pointer hover:text-violet-400"
+                  onClick={handleSubmit}
+                >
+                  {formLoading
+                    ? "Saving..."
+                    : editingClient
+                    ? "Update"
+                    : "Save"}
                 </div>
+              </div>
+            </div>
+          </div>
 
-                <div className="flex gap-2">
-                  <Button
-                    type="submit"
-                    loading={formLoading}
-                    variant="primary"
-                  >
-                    {editingClient ? 'Update Client' : 'Add Client'}
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={cancelEdit}
-                    variant="secondary"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        )}
+          {/* Address field on separate line if needed */}
+          {(formData.address || editingClient) && (
+            <div className="relative mt-4 h-12 w-full border border-violet-300 rounded-xl">
+              <input
+                type="text"
+                name="address"
+                id="address"
+                placeholder="Address (optional)"
+                className="block w-full h-full pl-4 pr-4 rounded-2xl text-l text-gray-700 placeholder:text-gray-400 focus:outline-none"
+                value={formData.address}
+                onChange={(e) =>
+                  setFormData({ ...formData, address: e.target.value })
+                }
+              />
+            </div>
+          )}
+
+          {editingClient && (
+            <div className="mt-4 flex gap-2">
+              <Button type="button" onClick={cancelEdit} variant="secondary">
+                Cancel Edit
+              </Button>
+            </div>
+          )}
+        </div>
 
         {/* Clients List */}
         <Card>
@@ -251,13 +287,9 @@ export default function ClientsPage() {
             </CardContent>
           ) : clients.length === 0 ? (
             <CardContent className="text-center">
-              <p className="text-gray-500 mb-4">No clients yet. Add your first client to get started!</p>
-              <Button
-                onClick={() => setShowForm(true)}
-                variant="primary"
-              >
-                Add Your First Client
-              </Button>
+              <p className="text-gray-500 mb-4">
+                No clients yet. Add your first client to get started!
+              </p>
             </CardContent>
           ) : (
             <Table>
@@ -272,22 +304,31 @@ export default function ClientsPage() {
               </TableHeader>
               <TableBody>
                 {clients.map((client) => (
-                  <TableRow key={client.id} className={client.is_active ? '' : 'opacity-50'}>
+                  <TableRow
+                    key={client.id}
+                    className={client.is_active ? "" : "opacity-50"}
+                  >
                     <TableCell>
                       <div className="font-medium">{client.name}</div>
                       {client.address && (
-                        <div className="text-sm text-gray-500">{client.address}</div>
+                        <div className="text-sm text-gray-500">
+                          {client.address}
+                        </div>
                       )}
                     </TableCell>
-                    <TableCell>{client.email || '-'}</TableCell>
-                    <TableCell>{client.currency} {client.hourly_rate}</TableCell>
+                    <TableCell>{client.email || "-"}</TableCell>
                     <TableCell>
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        client.is_active 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {client.is_active ? 'Active' : 'Inactive'}
+                      {client.currency} {client.hourly_rate}
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          client.is_active
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {client.is_active ? "Active" : "Inactive"}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
@@ -318,5 +359,5 @@ export default function ClientsPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
