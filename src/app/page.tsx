@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Datepicker, { DateValueType } from 'react-tailwindcss-datepicker'
 import { getTimeEntries, createTimeEntry, updateTimeEntry, deleteTimeEntry } from '@/services/timeEntries'
 import { getClients } from '@/services/clients'
 import { TimeEntry, Client, CreateTimeEntryInput, UpdateTimeEntryInput } from '@/types/database'
@@ -25,6 +26,12 @@ export default function Home() {
     date: new Date().toISOString().split('T')[0],
     hours: 0,
     description: ''
+  })
+  
+  // Datepicker state
+  const [dateValue, setDateValue] = useState<DateValueType>({
+    startDate: new Date(),
+    endDate: new Date()
   })
 
   useEffect(() => {
@@ -58,8 +65,15 @@ export default function Home() {
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleSubmit(e?: React.FormEvent) {
+    if (e) e.preventDefault()
+    
+    // Validate required fields
+    if (!formData.description || !formData.client_id || !formData.hours) {
+      setNotification({ type: 'error', message: 'Please fill in all fields' })
+      return
+    }
+    
     setFormLoading(true)
 
     try {
@@ -79,11 +93,17 @@ export default function Home() {
       }
       
       // Reset form
+      const today = new Date()
+      const todayStr = today.toISOString().split('T')[0]
       setFormData({
         client_id: '',
-        date: new Date().toISOString().split('T')[0],
+        date: todayStr,
         hours: 0,
         description: ''
+      })
+      setDateValue({
+        startDate: today,
+        endDate: today
       })
       
       // Reload entries
@@ -115,16 +135,28 @@ export default function Home() {
       hours: entry.hours,
       description: entry.description
     })
+    // Convert string date to Date object for datepicker
+    const dateObj = new Date(entry.date)
+    setDateValue({
+      startDate: dateObj,
+      endDate: dateObj
+    })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function cancelEdit() {
     setEditingEntry(null)
+    const today = new Date()
+    const todayStr = today.toISOString().split('T')[0]
     setFormData({
       client_id: '',
-      date: new Date().toISOString().split('T')[0],
+      date: todayStr,
       hours: 0,
       description: ''
+    })
+    setDateValue({
+      startDate: today,
+      endDate: today
     })
   }
 
@@ -139,17 +171,8 @@ export default function Home() {
       )}
 
       <div className="max-w-6xl mx-auto">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Time Tracker</h1>
-          <p className="text-gray-600 mt-2">Track your work hours and manage your time</p>
-        </header>
-
         {/* Time Entry Form */}
-        <div className="bg-white shadow rounded-lg p-6 mb-8">
-          <h2 className="text-lg font-semibold mb-4">
-            {editingEntry ? 'Edit Time Entry' : 'Add New Time Entry'}
-          </h2>
-          
+        <div className="mb-8">
           {clients.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500 mb-4">You need to add a client before tracking time.</p>
@@ -161,20 +184,27 @@ export default function Home() {
               </Link>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div>
-                  <label htmlFor="client" className="block text-sm font-medium text-gray-700">
-                    Client
-                  </label>
+            <div className="relative my-8 h-16 w-12/12 border border-violet-300 rounded-xl">
+              <input
+                type="text"
+                name="description"
+                id="description"
+                placeholder="What are you working on?"
+                className="block w-full h-full pl-4 pr-20 rounded-2xl text-l text-gray-700 placeholder:text-gray-400 focus:outline-none"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              />
+              <div className="absolute inset-y-0 right-0 flex items-center">
+                <div className="h-full flex items-center px-2 border-l border-violet-300">
                   <select
                     id="client"
-                    required
+                    name="client"
+                    className="h-full w-28 bg-transparent text-sm text-gray-700 truncate focus:outline-none"
                     value={formData.client_id}
                     onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    required
                   >
-                    <option value="">Select a client</option>
+                    <option value="">Client</option>
                     {clients.map((client) => (
                       <option key={client.id} value={client.id}>
                         {client.name}
@@ -182,71 +212,68 @@ export default function Home() {
                     ))}
                   </select>
                 </div>
-
-                <div>
-                  <label htmlFor="date" className="block text-sm font-medium text-gray-700">
-                    Date
-                  </label>
-                  <input
-                    type="date"
-                    id="date"
-                    required
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                <div className="h-full flex items-center px-2 relative">
+                  <Datepicker
+                    asSingle
+                    useRange={false}
+                    value={dateValue}
+                    onChange={(value: DateValueType) => {
+                      if (value) {
+                        setDateValue(value)
+                        if (value.startDate) {
+                          // Convert Date to string format YYYY-MM-DD
+                          const dateObj = new Date(value.startDate)
+                          const dateStr = dateObj.toISOString().split('T')[0]
+                          setFormData({ ...formData, date: dateStr })
+                        }
+                      }
+                    }}
+                    placeholder="Date"
+                    displayFormat="DD MMM YY"
+                    inputClassName="w-28 text-sm focus:outline-none cursor-pointer"
+                    toggleClassName="hidden"
+                    containerClassName="relative"
+                    popoverDirection="down"
+                    readOnly={true}
                   />
                 </div>
-
-                <div>
-                  <label htmlFor="hours" className="block text-sm font-medium text-gray-700">
-                    Hours
-                  </label>
-                  <input
-                    type="number"
-                    id="hours"
-                    required
-                    min="0.1"
-                    step="0.1"
-                    value={formData.hours || ''}
-                    onChange={(e) => setFormData({ ...formData, hours: parseFloat(e.target.value) || 0 })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="sm:col-span-2 lg:col-span-1">
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                    Description
-                  </label>
+                <div className="h-full flex items-center px-2">
                   <input
                     type="text"
-                    id="description"
-                    required
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    name="hours"
+                    id="hours"
+                    placeholder="0"
+                    className="h-full w-6 bg-transparent text-center text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none"
+                    value={formData.hours || ''}
+                    onChange={(e) => setFormData({ ...formData, hours: parseFloat(e.target.value) || 0 })}
                   />
                 </div>
-              </div>
+                <div className="h-full flex items-center pr-2 border-l-transparent border-r border-violet-300">
+                  h
+                </div>
 
-              <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={formLoading}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {formLoading ? 'Saving...' : editingEntry ? 'Update Entry' : 'Add Entry'}
-                </button>
-                {editingEntry && (
-                  <button
-                    type="button"
-                    onClick={cancelEdit}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                <div className="px-5 flex items-center h-full bg-violet-600 rounded-r-[0.7rem]">
+                  <div
+                    className="text-sm text-violet-100 bg-violet-600 cursor-pointer hover:text-violet-400"
+                    onClick={handleSubmit}
                   >
-                    Cancel
-                  </button>
-                )}
+                    {formLoading ? 'Saving...' : editingEntry ? 'Update' : 'Save'}
+                  </div>
+                </div>
               </div>
-            </form>
+            </div>
+          )}
+          
+          {editingEntry && (
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Cancel Edit
+              </button>
+            </div>
           )}
         </div>
 
