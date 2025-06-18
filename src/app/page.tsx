@@ -9,7 +9,7 @@ import { Notification } from '@/components/Notification'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function Home() {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
@@ -129,7 +129,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="w-full py-8 px-8">
       {notification && (
         <Notification
           type={notification.type}
@@ -138,23 +138,10 @@ export default function Home() {
         />
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <header className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Daily Time Tracker</h1>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/clients"
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
-            >
-              Manage Clients
-            </Link>
-            <button
-              onClick={signOut}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
-            >
-              Sign out
-            </button>
-          </div>
+      <div className="max-w-6xl mx-auto">
+        <header className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Time Tracker</h1>
+          <p className="text-gray-600 mt-2">Track your work hours and manage your time</p>
         </header>
 
         {/* Time Entry Form */}

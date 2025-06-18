@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { getAllClientRecords, createClientRecord, updateClient, deleteClient } from '@/services/clients'
 import { Client, CreateClientInput, UpdateClientInput } from '@/types/database'
 import { Notification } from '@/components/Notification'
@@ -119,7 +118,7 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="w-full py-8 px-8">
       {notification && (
         <Notification
           type={notification.type}
@@ -128,26 +127,18 @@ export default function ClientsPage() {
         />
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto">
         <header className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Clients</h1>
             <p className="mt-2 text-gray-600">Manage your clients and their hourly rates</p>
           </div>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
-            >
-              Back to Dashboard
-            </Link>
-            <button
-              onClick={() => setShowForm(!showForm)}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700"
-            >
-              {showForm ? 'Cancel' : 'Add Client'}
-            </button>
-          </div>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700"
+          >
+            {showForm ? 'Cancel' : 'Add Client'}
+          </button>
         </header>
 
         {/* Client Form */}
